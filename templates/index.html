@@ -1,0 +1,2094 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PLANR · 2D Floor Plan</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    :root {
+      --g: #2d5a27;
+      --g2: #4a8c42;
+      --ink: #1a1a1a;
+      --s: #fff;
+      --s2: #f7f6f3;
+      --s3: #eeece8;
+      --bdr: #d8d4cc;
+      --r: 8px
+    }
+
+    body {
+      font-family: 'Sora', sans-serif;
+      background: var(--s2);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 16px;
+      background: var(--s);
+      border-bottom: 1px solid var(--bdr);
+      flex-shrink: 0;
+      flex-wrap: wrap
+    }
+
+    .logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--g);
+      letter-spacing: .1em;
+      font-weight: 500;
+      margin-right: 6px
+    }
+
+    .btn {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--bdr);
+      background: var(--s);
+      font-size: 11px;
+      cursor: pointer;
+      color: #555;
+      font-family: 'Sora', sans-serif;
+      font-weight: 500;
+      transition: .15s
+    }
+
+    .btn:hover {
+      background: var(--s3);
+      color: var(--ink)
+    }
+
+    .btn.on {
+      background: var(--g);
+      color: #fff;
+      border-color: var(--g)
+    }
+
+    .btn.primary {
+      background: var(--g);
+      color: #fff;
+      border-color: var(--g)
+    }
+
+    .btn.primary:hover {
+      background: var(--g2)
+    }
+
+    .btn:disabled {
+      opacity: .4;
+      cursor: not-allowed
+    }
+
+    .sep {
+      width: 1px;
+      height: 16px;
+      background: var(--bdr);
+      margin: 0 2px
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden
+    }
+
+    .sidebar {
+      width: 300px;
+      background: var(--s);
+      border-right: 1px solid var(--bdr);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      flex-shrink: 0
+    }
+
+    .sb-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--bdr)
+    }
+
+    .sb-tab {
+      flex: 1;
+      padding: 9px 4px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      color: #888;
+      border-bottom: 2px solid transparent;
+      transition: .15s
+    }
+
+    .sb-tab.on {
+      color: var(--ink);
+      border-bottom-color: var(--g)
+    }
+
+    .sb-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px
+    }
+
+    .sb-content::-webkit-scrollbar {
+      width: 3px
+    }
+
+    .sb-content::-webkit-scrollbar-thumb {
+      background: var(--bdr);
+      border-radius: 2px
+    }
+
+    .canvas-area {
+      flex: 1;
+      overflow: auto;
+      background: #c8c4bc;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 24px;
+      position: relative
+    }
+
+    canvas {
+      background: #fff;
+      box-shadow: 0 6px 32px rgba(0, 0, 0, 0.18);
+      cursor: crosshair;
+      display: block
+    }
+
+    .steps {
+      display: flex;
+      gap: 6px;
+      align-items: center
+    }
+
+    .step {
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--bdr);
+      background: var(--s2);
+      color: #888;
+      font-weight: 500
+    }
+
+    .step.on {
+      background: var(--g);
+      color: #fff;
+      border-color: var(--g)
+    }
+
+    .step.done {
+      background: var(--s3);
+      color: var(--g);
+      border-color: var(--g)
+    }
+
+    .panel {
+      display: none;
+      flex-direction: column;
+      gap: 12px
+    }
+
+    .panel.on {
+      display: flex
+    }
+
+    .drop {
+      border: 1.5px dashed var(--bdr);
+      border-radius: 10px;
+      padding: 36px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--s2);
+      transition: .2s;
+      position: relative
+    }
+
+    .drop:hover {
+      border-color: var(--g);
+      background: #f0f7ef
+    }
+
+    .drop input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%
+    }
+
+    .drop-icon {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 12px;
+      color: #aaa
+    }
+
+    .drop-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px
+    }
+
+    .drop-sub {
+      font-size: 12px;
+      color: #888
+    }
+
+    .preview-img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid var(--bdr);
+      max-height: 160px;
+      object-fit: contain;
+      background: #fff
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .05em
+    }
+
+    input[type=text],
+    input[type=number],
+    select,
+    textarea {
+      padding: 7px 10px;
+      border: 1px solid var(--bdr);
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: 'Sora', sans-serif;
+      background: var(--s2);
+      color: var(--ink);
+      width: 100%
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--g)
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start
+    }
+
+    .room-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px
+    }
+
+    .room-table th {
+      text-align: left;
+      padding: 5px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      border-bottom: 1px solid var(--bdr)
+    }
+
+    .room-table td {
+      padding: 4px;
+      border-bottom: 1px solid var(--s3);
+      vertical-align: middle
+    }
+
+    .room-table tr:last-child td {
+      border-bottom: none
+    }
+
+    .room-table input,
+    .room-table select {
+      padding: 2px 4px;
+      font-size: 10px;
+      border: 1px solid var(--bdr);
+      border-radius: 4px;
+      background: var(--s2);
+      color: var(--ink);
+      font-family: 'DM Mono', monospace
+    }
+
+    .room-table input {
+      width: 62px;
+      text-align: right
+    }
+
+    .room-table input.xpos {
+      width: 52px;
+      background: #f0f7ef
+    }
+
+    .rdot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      display: inline-block;
+      margin-right: 4px;
+      vertical-align: middle
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 9px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: 500
+    }
+
+    .badge.printed {
+      background: #d4edda;
+      color: #155724
+    }
+
+    .badge.estimated {
+      background: #fff3cd;
+      color: #856404
+    }
+
+    .warn-bar {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #856404
+    }
+
+    .del-btn {
+      cursor: pointer;
+      color: #dc3545;
+      font-size: 14px;
+      padding: 0 3px;
+      border: none;
+      background: none;
+      line-height: 1
+    }
+
+    .sku-card {
+      background: var(--s2);
+      border: 1px solid var(--bdr);
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 5px
+    }
+
+    .sku-code {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--g);
+      margin-bottom: 2px
+    }
+
+    .sku-name {
+      font-size: 11px;
+      font-weight: 500;
+      margin-bottom: 3px
+    }
+
+    .sku-dims {
+      font-size: 10px;
+      color: #888;
+      font-family: 'DM Mono', monospace
+    }
+
+    .sku-price {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'DM Mono', monospace
+    }
+
+    .bom-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px solid var(--s3);
+      font-size: 11px;
+      gap: 6px
+    }
+
+    .bom-row:last-child {
+      border-bottom: none
+    }
+
+    .bom-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0 0;
+      border-top: 1px solid var(--bdr);
+      font-weight: 600;
+      font-size: 12px;
+      margin-top: 2px
+    }
+
+    .mono {
+      font-family: 'DM Mono', monospace
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--bdr);
+      border-top-color: var(--g);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #888
+    }
+
+    .stat {
+      flex: 1;
+      background: var(--s2);
+      border: 1px solid var(--bdr);
+      border-radius: 6px;
+      padding: 7px 10px;
+      text-align: center
+    }
+
+    .stat-val {
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'DM Mono', monospace
+    }
+
+    .stat-lbl {
+      font-size: 9px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-top: 1px
+    }
+
+    .slabel {
+      font-size: 10px;
+      font-weight: 600;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px
+    }
+
+    .toolbar-label {
+      font-size: 10px;
+      color: #888;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .05em
+    }
+
+    .sku-compat {
+      border-color: #4A9E6B !important;
+      cursor: pointer;
+    }
+
+    .sku-compat:hover {
+      background: #e8f5ed;
+    }
+
+    .sku-active {
+      background: #d4f0e0 !important;
+      border-color: #2d5a27 !important;
+      border-width: 2px !important;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="topbar">
+    <div class="logo">PLANR · 2D</div>
+    <div class="steps">
+      <div class="step on" id="s1">01 Upload</div>
+      <div class="step" id="s2">02 Confirm</div>
+      <div class="step" id="s3">03 Render</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <span class="toolbar-label">View:</span>
+      <button class="btn on" id="b-color" onclick="setView('color')">Color</button>
+      <button class="btn" id="b-bw" onclick="setView('bw')">B&W</button>
+      <button class="btn on" id="b-dims" onclick="toggleDims()">Dimensions</button>
+      <button class="btn on" id="b-furn" onclick="toggleFurn()">Furniture</button>
+      <button class="btn on" id="b-area" onclick="toggleArea()">Area</button>
+      <div class="sep"></div>
+      <button class="btn" onclick="zoomIn()">＋</button>
+      <button class="btn" onclick="zoomOut()">－</button>
+      <button class="btn" onclick="zoomFit()">Fit</button>
+      <div class="sep"></div>
+      <button class="btn primary" id="export-btn" onclick="exportPNG()" disabled>⬇ Export PNG</button>
+      <button class="btn" id="pdf-btn" onclick="exportPDF()" disabled>⬇ PDF Quote</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="sb-tabs">
+        <div class="sb-tab on" id="tab-btn-upload" onclick="sbTab('upload',this)">Upload</div>
+        <div class="sb-tab" id="tab-btn-rooms" onclick="sbTab('rooms',this)">Rooms</div>
+        <div class="sb-tab" id="tab-btn-skus" onclick="sbTab('skus',this)">SKUs</div>
+        <div class="sb-tab" id="tab-btn-bom" onclick="sbTab('bom',this)">BOM</div>
+      </div>
+
+      <div class="sb-content" id="tab-upload">
+        <div class="panel on">
+          <div class="field">
+            <div class="label">Floor plan image</div>
+            <div class="drop">
+              <input type="file" id="file-input" accept="image/*" onchange="onFile(this)">
+              <svg class="drop-icon" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect x="4" y="8" width="32" height="26" rx="3" />
+                <path d="M14 22l6-6 6 6M20 16v12" />
+              </svg>
+              <div class="drop-title">Upload floor plan</div>
+              <div class="drop-sub">JPG · PNG · Any 2D plan image</div>
+            </div>
+          </div>
+          <div id="img-preview" style="display:none">
+            <img id="preview" class="preview-img">
+          </div>
+          <div class="field">
+            <div class="label">Project name</div>
+            <input type="text" id="proj-name" placeholder="e.g. Sharma Residence GF" value="My Project">
+          </div>
+          <div class="field">
+            <div class="label">Known building dimensions (optional)</div>
+            <div class="row">
+              <input type="number" id="bldg-w" placeholder="Total W mm" style="flex:1">
+              <input type="number" id="bldg-l" placeholder="Total L mm" style="flex:1">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <button class="btn primary" id="extract-btn" onclick="doExtract()" disabled style="flex:1">Extract rooms
+              →</button>
+            <button class="btn" onclick="loadDemo()" style="flex:1">Demo plan</button>
+          </div>
+          <div id="extract-status"></div>
+        </div>
+      </div>
+
+      <div class="sb-content" id="tab-rooms" style="display:none">
+        <div class="panel on">
+          <div id="warn-estimated"></div>
+          <div style="overflow-x:auto">
+            <table class="room-table" id="rooms-tbl">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Room</th>
+                  <th>Type</th>
+                  <th>W mm</th>
+                  <th>L mm</th>
+                  <th title="X position from left edge">X</th>
+                  <th title="Y position from top edge">Y</th>
+                  <th>Src</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="rooms-body"></tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="btn" onclick="addRoom()" style="flex:1">+ Add room</button>
+            <button class="btn primary" onclick="doRender()" id="render-btn" style="flex:1">Render →</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sb-content" id="tab-skus" style="display:none">
+        <div class="slabel">Catalogue</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+          <input type="file" id="sku-img-input" accept="image/*" style="display:none"
+            onchange="importSKUsFromImage(this)">
+          <button class="btn" onclick="document.getElementById('sku-img-input').click()"
+            style="flex:1;font-size:10px">📷 Import from Catalogue Image</button>
+          <div id="sku-import-status" style="font-size:10px;color:#888;width:100%"></div>
+        </div>
+        <div id="sku-list"></div>
+      </div>
+
+      <div class="sb-content" id="tab-bom" style="display:none">
+        <div class="slabel">Bill of materials</div>
+        <div id="bom-list"></div>
+      </div>
+    </div>
+
+    <div class="canvas-area" id="canvas-area">
+      <canvas id="plan-canvas" width="1200" height="900"></canvas>
+    </div>
+  </div>
+
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // SKU CATALOGUE
+    // ═══════════════════════════════════════════════════════════════════
+    const SKUS = [
+      { code: 'SOF-ANORA-3S', name: 'ANORA 3-SEATER SOFA', cat: 'sofa', room: 'living', w: 2000, h: 830, d: 775, price: 69900 },
+      { code: 'SOF-PRAVO-4S', name: 'PRAVO 4-SEATER SOFA', cat: 'sofa', room: 'living', w: 2800, h: 825, d: 750, price: 124050 },
+      { code: 'SOF-PRAVO-2S', name: 'PRAVO 2-SEATER SOFA', cat: 'sofa', room: 'living', w: 1425, h: 825, d: 750, price: 65306 },
+      { code: 'CHR-MASSA-LNG', name: 'MASSA LOUNGE CHAIR', cat: 'chair', room: 'living', w: 800, h: 850, d: 750, price: 46200 },
+      { code: 'TBL-WL-STD', name: 'WL STANDARD TABLE', cat: 'ctable', room: 'living', w: 1200, h: 340, d: 700, price: 20100 },
+      { code: 'TBL-CURVE-SIDE', name: 'CURVE SIDE TABLE', cat: 'stable', room: 'living', w: 600, h: 500, d: 300, price: 17212 },
+      { code: 'TBL-CURVE-DIN', name: 'CURVE DINING TABLE', cat: 'dtable', room: 'dining', w: 1200, h: 450, d: 1200, price: 30262 },
+      { code: 'KIT-UC-600', name: 'UPPER CABINET 600mm', cat: 'kitupper', room: 'kitchen', w: 600, h: 720, d: 350, price: 12500 },
+      { code: 'KIT-BC-PNP', name: 'POT N PAN BASE UNIT', cat: 'kitbase', room: 'kitchen', w: 600, h: 870, d: 580, price: 18000 },
+      { code: 'KIT-TU-PANTRY', name: 'PANTRY TALL UNIT', cat: 'kittall', room: 'kitchen', w: 600, h: 2100, d: 580, price: 28000 },
+      { code: 'WRD-SLD-2940', name: '3-DOOR SLIDING WARDROBE', cat: 'wardrobe', room: 'bedroom', w: 2940, h: 2400, d: 620, price: 95000 },
+      { code: 'WRD-OPN-2030', name: '4-DOOR OPENABLE WARDROBE', cat: 'wardrobe', room: 'bedroom', w: 2030, h: 2400, d: 625, price: 75000 },
+      { code: 'VAN-1550-V1', name: 'DOUBLE BASIN VANITY 1550mm', cat: 'vanity', room: 'bathroom', w: 1550, h: 600, d: 520, price: 85000 },
+      { code: 'DIN-CHR-01', name: 'DINING CHAIR', cat: 'dchair', room: 'dining', w: 500, h: 900, d: 500, price: 8000 },
+      { code: 'BED-KG-01', name: 'KING SIZE BED', cat: 'bed', room: 'bedroom', w: 1800, h: 500, d: 2100, price: 45000 },
+      { code: 'BED-ST-01', name: 'BEDSIDE TABLE', cat: 'bside', room: 'bedroom', w: 500, h: 550, d: 400, price: 8500 },
+    ];
+
+    // Furniture type → SKU code mapping for BOM
+    const FURN_SKU = {
+      bed: 'BED-KG-01', bside: 'BED-ST-01', sofa: 'SOF-ANORA-3S',
+      ctable: 'TBL-WL-STD', dtable: 'TBL-CURVE-DIN', dchair: 'DIN-CHR-01',
+      wardrobe: 'WRD-SLD-2940', vanity: 'VAN-1550-V1',
+      kitupper: 'KIT-UC-600', kitbase: 'KIT-BC-PNP',
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ROOM COLORS  —  warm-tan palette (image-2 style)
+    // ═══════════════════════════════════════════════════════════════════
+    const ROOM_COLORS = {
+      living: { fill: '#F2C46C', wall: '#2a1a00', label: '#3a2a00' },
+      bedroom: { fill: '#F2C46C', wall: '#2a1a00', label: '#3a2a00' },
+      kitchen: { fill: '#F2C46C', wall: '#2a1a00', label: '#3a2a00' },
+      bathroom: { fill: '#8ABCD8', wall: '#1a4a60', label: '#0a3a50' },
+      dining: { fill: '#F2C46C', wall: '#2a1a00', label: '#3a2a00' },
+      corridor: { fill: '#E8B848', wall: '#2a1a00', label: '#3a2a00' },
+      balcony: { fill: '#A8C0A8', wall: '#2a3a2a', label: '#1a2a1a' },
+      study: { fill: '#F2C46C', wall: '#2a1a00', label: '#3a2a00' },
+      default: { fill: '#F2C46C', wall: '#2a1a00', label: '#3a2a00' },
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════
+    let rooms = [];
+    let imgB64 = null, imgMime = null;
+    let imgNatW = 800, imgNatH = 600;
+    let viewColor = true, showDims = true, showFurn = true, showArea = true;
+    let zoom = 1.0;
+
+    // Furniture interaction state
+    let furnItems = [];       // placed furniture pieces
+    let selectedFurnIdx = -1; // -1 = nothing selected
+    let isDragging = false;
+    let dragOffX = 0, dragOffY = 0;
+    const PLAN_OX = 16, PLAN_OY = 52; // canvas offset for plan area
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FILE UPLOAD
+    // ═══════════════════════════════════════════════════════════════════
+    function onFile(inp) {
+      const f = inp.files[0]; if (!f) return;
+      imgMime = f.type || 'image/jpeg';
+      const r = new FileReader();
+      r.onload = e => {
+        imgB64 = e.target.result.split(',')[1];
+        document.getElementById('preview').src = e.target.result;
+        document.getElementById('img-preview').style.display = 'block';
+        document.getElementById('extract-btn').disabled = false;
+        // Capture natural image dimensions
+        const tempImg = new Image();
+        tempImg.onload = () => { imgNatW = tempImg.naturalWidth; imgNatH = tempImg.naturalHeight; console.log('Image dims:', imgNatW, 'x', imgNatH); };
+        tempImg.src = e.target.result;
+      };
+      r.readAsDataURL(f);
+    }
+
+    // Demo: High-precision spatial data
+    function loadDemo() {
+      imgNatW = 800; imgNatH = 600; // Force landscape aspect for demo
+      const demoData = [
+        { "name": "Balcony TL", "type": "balcony", "x_norm": 0.05, "y_norm": 0.04, "w_norm": 0.22, "h_norm": 0.12, "width_ft": 5.74, "length_ft": 5.74 },
+        { "name": "M. Bed Room", "type": "bedroom", "x_norm": 0.05, "y_norm": 0.16, "w_norm": 0.27, "h_norm": 0.30, "width_ft": 11.17, "length_ft": 11.5 },
+        { "name": "CB Left", "type": "storage", "x_norm": 0.00, "y_norm": 0.32, "w_norm": 0.05, "h_norm": 0.18, "width_ft": 3.21, "length_ft": 3.21 },
+        { "name": "T & B", "type": "bathroom", "x_norm": 0.32, "y_norm": 0.16, "w_norm": 0.10, "h_norm": 0.18, "width_ft": 4.0, "length_ft": 7.5 },
+        { "name": "Passage", "type": "passage", "x_norm": 0.28, "y_norm": 0.34, "w_norm": 0.22, "h_norm": 0.18, "width_ft": null, "length_ft": null },
+        { "name": "T & B", "type": "bathroom", "x_norm": 0.45, "y_norm": 0.16, "w_norm": 0.10, "h_norm": 0.18, "width_ft": 4.0, "length_ft": 7.5 },
+        { "name": "Balcony TR", "type": "balcony", "x_norm": 0.55, "y_norm": 0.04, "w_norm": 0.22, "h_norm": 0.12, "width_ft": 5.7, "length_ft": 5.7 },
+        { "name": "Bedroom", "type": "bedroom", "x_norm": 0.55, "y_norm": 0.16, "w_norm": 0.22, "h_norm": 0.30, "width_ft": 11.0, "length_ft": 11.5 },
+        { "name": "CB Right", "type": "storage", "x_norm": 0.77, "y_norm": 0.32, "w_norm": 0.04, "h_norm": 0.18, "width_ft": 3.21, "length_ft": 3.21 },
+        { "name": "Utility", "type": "utility", "x_norm": 0.00, "y_norm": 0.52, "w_norm": 0.08, "h_norm": 0.22, "width_ft": 4.25, "length_ft": null },
+        { "name": "Kitchen", "type": "kitchen", "x_norm": 0.08, "y_norm": 0.52, "w_norm": 0.18, "h_norm": 0.22, "width_ft": 8.0, "length_ft": 8.5 },
+        { "name": "Dining", "type": "dining", "x_norm": 0.26, "y_norm": 0.52, "w_norm": 0.20, "h_norm": 0.22, "width_ft": 9.0, "length_ft": 8.5 },
+        { "name": "Living Room", "type": "living_room", "x_norm": 0.46, "y_norm": 0.52, "w_norm": 0.28, "h_norm": 0.30, "width_ft": 11.0, "length_ft": 13.33 },
+        { "name": "Balcony BR", "type": "balcony", "x_norm": 0.74, "y_norm": 0.52, "w_norm": 0.07, "h_norm": 0.30, "width_ft": 7.25, "length_ft": 7.25 }
+      ];
+
+      const FT_TO_MM = 304.8;
+      rooms = demoData.map((r, i) => {
+        let t = r.type;
+        if (t === 'living_room') t = 'living';
+        return {
+          id: i + 1, name: r.name, type: t,
+          w: Math.round((r.width_ft || 10) * FT_TO_MM),
+          l: Math.round((r.length_ft || 10) * FT_TO_MM),
+          xn: r.x_norm, yn: r.y_norm,
+          wn: r.w_norm, hn: r.h_norm,
+          src: 'printed', conf: 'high'
+        };
+      });
+      goStep(2); renderRoomsTable(); sbTab('rooms');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // API EXTRACTION
+    // ═══════════════════════════════════════════════════════════════════
+    async function doExtract() {
+      if (!imgB64) { alert('Upload an image first'); return; }
+      const st = document.getElementById('extract-status');
+      st.innerHTML = '<div class="loading"><div class="spinner"></div>Vision engine reading floor plan…</div>';
+      document.getElementById('extract-btn').disabled = true;
+      try {
+        const res = await fetch('/api/extract', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: imgB64, mimeType: imgMime, imgWidth: imgNatW, imgHeight: imgNatH })
+        });
+        const parsed = await res.json();
+        if (parsed.error) throw new Error(parsed.error);
+
+        rooms = parsed.map((r, i) => {
+          let t = (r.type || 'default').toLowerCase();
+          if (t.includes('bed')) t = 'bedroom';
+          if (t.includes('living') || t.includes('woon')) t = 'living';
+          if (t.includes('bath') || t.includes('wc') || t.includes('bad')) t = 'bathroom';
+          if (t.includes('kitchen') || t.includes('keu')) t = 'kitchen';
+          if (t.includes('hall') || t.includes('corridor') || t.includes('gang') || t.includes('entree')) t = 'corridor';
+          if (t.includes('balc') || t.includes('balkon')) t = 'balcony';
+          if (t.includes('dining') || t.includes('eet')) t = 'dining';
+          return {
+            id: i + 1, name: r.name, type: t,
+            w: r.width_mm || 3000, l: r.length_mm || 3000,
+            xn: r.x_norm || 0, yn: r.y_norm || 0,
+            wn: r.w_norm || 0, hn: r.h_norm || 0,
+            x_mm: r.x_mm || 0, y_mm: r.y_mm || 0,
+            src: r.source || 'estimated', conf: r.confidence || 'low'
+          };
+        });
+
+        const est = rooms.filter(r => r.src === 'estimated').length;
+          st.innerHTML = `<div style="color:var(--g);font-size:12px">✓ ${rooms.length} rooms extracted${est > 0 ? ` · <span style="color:#856404">${est} estimated</span>` : ''}.</div>`;
+        applyBuildingScale();
+        goStep(2); renderRoomsTable(); sbTab('rooms');
+      } catch (e) {
+        st.innerHTML = `<div style="color:#dc3545;font-size:12px">Error: ${e.message}</div>`;
+        document.getElementById('extract-btn').disabled = false;
+      }
+    }
+
+    function applyBuildingScale() {
+      const bw = parseInt(document.getElementById('bldg-w').value) || 0;
+      const bl = parseInt(document.getElementById('bldg-l').value) || 0;
+      if (!bw || !bl || !rooms.length) return;
+      const maxW = rooms.reduce((m, r) => Math.max(m, (r.x_mm || 0) + r.w), 0);
+      const maxL = rooms.reduce((m, r) => Math.max(m, (r.y_mm || 0) + r.l), 0);
+      if (!maxW || !maxL) return;
+      const sx = bw / maxW, sy = bl / maxL;
+      rooms.forEach(r => { r.w = Math.round(r.w * sx); r.l = Math.round(r.l * sy); r.x_mm = Math.round((r.x_mm || 0) * sx); r.y_mm = Math.round((r.y_mm || 0) * sy); });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ROOMS TABLE
+    // ═══════════════════════════════════════════════════════════════════
+    function renderRoomsTable() {
+      const body = document.getElementById('rooms-body');
+      body.innerHTML = '';
+      const est = rooms.filter(r => r.src === 'estimated').length;
+      document.getElementById('warn-estimated').innerHTML = est > 0
+        ? `<div class="warn-bar">⚠ ${est} room${est > 1 ? 's' : ''} have estimated dimensions.</div>` : '';
+
+      rooms.forEach((r, i) => {
+        const c = ROOM_COLORS[r.type] || ROOM_COLORS.default;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+      <td><span class="rdot" style="background:${c.fill};border:1.5px solid ${c.wall}"></span></td>
+      <td><input style="width:80px;font-family:'Sora',sans-serif;font-size:10px" value="${r.name}" onchange="rooms[${i}].name=this.value"></td>
+      <td><select onchange="rooms[${i}].type=this.value;renderRoomsTable()" style="font-size:10px;padding:2px 3px">
+        ${['living', 'bedroom', 'kitchen', 'bathroom', 'dining', 'corridor', 'balcony', 'study', 'default'].map(t => `<option value="${t}"${r.type === t ? ' selected' : ''}>${t}</option>`).join('')}
+      </select></td>
+      <td><input type="number" value="${r.w}" onchange="rooms[${i}].w=+this.value"></td>
+      <td><input type="number" value="${r.l}" onchange="rooms[${i}].l=+this.value"></td>
+      <td><input type="number" class="xpos" title="X from left (mm)" value="${r.x_mm || 0}" onchange="rooms[${i}].x_mm=+this.value"></td>
+      <td><input type="number" class="xpos" title="Y from top (mm)" value="${r.y_mm || 0}" onchange="rooms[${i}].y_mm=+this.value"></td>
+      <td><span class="badge ${r.src}">${r.src === 'printed' ? '📐' : '~'}</span></td>
+      <td><button class="del-btn" onclick="rooms.splice(${i},1);renderRoomsTable()">✕</button></td>`;
+        body.appendChild(tr);
+      });
+      buildSKUPanel(); buildBOM();
+    }
+
+    function addRoom() {
+      rooms.push({ id: Date.now(), name: 'New Room', type: 'default', w: 3000, l: 3000, x_mm: 0, y_mm: 0, src: 'estimated', conf: 'low' });
+      renderRoomsTable();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // RENDER TRIGGER
+    // ═══════════════════════════════════════════════════════════════════
+    function doRender() {
+      goStep(3);
+      renderCanvas();           // sets _positions, _scale, _startX, _startY
+      autoPopulateFurniture();  // uses those values to place furniture
+      renderCanvas();           // re-draw with furniture on top
+      buildBOM();
+      document.getElementById('export-btn').disabled = false;
+      document.getElementById('pdf-btn').disabled = false;
+      sbTab('bom');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CANVAS RENDERER — scaled, warm-tan palette matching the great design
+    // ═══════════════════════════════════════════════════════════════════
+    const MARGIN = 52, DIM_OFF = 30, TITLE_H = 48, LEGEND_H = 44, GAP_MM = 200;
+
+    // Positions array shared between renderCanvas and mouse handlers
+    let _positions = [], _scale = 1, _startX = 0, _startY = 0;
+
+    function renderCanvas() {
+      const canvas = document.getElementById('plan-canvas');
+      const ctx = canvas.getContext('2d');
+
+      if (!rooms.length) {
+        canvas.width = 800; canvas.height = 500;
+        ctx.fillStyle = '#f5f2ec'; ctx.fillRect(0, 0, 800, 500);
+        ctx.fillStyle = '#aaa'; ctx.font = '14px Sora,sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Upload a floor plan and click Render', 400, 250);
+        return;
+      }
+
+      // ── Determine positions using normalized coords ────────────────────
+      const hasNorm = rooms.some(r => (r.xn || 0) + (r.yn || 0) > 0);
+      let positions;
+      if (hasNorm) {
+        const aspectRatio = imgNatW / imgNatH;
+        const virtualH = 15000, virtualW = virtualH * aspectRatio;
+        positions = rooms.map(r => ({
+          mx: (r.xn || 0) * virtualW, mz: (r.yn || 0) * virtualH,
+          rw: (r.wn || 0.15) * virtualW, rl: (r.hn || 0.15) * virtualH
+        }));
+      } else if (rooms.some(r => (r.x_mm || 0) + (r.y_mm || 0) > 0)) {
+        positions = rooms.map(r => ({ mx: r.x_mm || 0, mz: r.y_mm || 0, rw: r.w, rl: r.l }));
+      } else {
+        const cols = Math.ceil(Math.sqrt(rooms.length));
+        let ox = 0, oz = 0, rowH = 0;
+        positions = rooms.map((room, i) => {
+          const col = i % cols;
+          if (col === 0 && i > 0) { oz += rowH + GAP_MM; ox = 0; rowH = 0; }
+          const p = { mx: ox, mz: oz, rw: room.w, rl: room.l };
+          rowH = Math.max(rowH, room.l); ox += room.w + GAP_MM;
+          return p;
+        });
+      }
+
+      const totalW = positions.reduce((m, p) => Math.max(m, p.mx + p.rw), 0);
+      const totalH = positions.reduce((m, p) => Math.max(m, p.mz + p.rl), 0);
+
+      const avW = 1600 - MARGIN * 2 - DIM_OFF * 2;
+      const avH = 1100 - MARGIN * 2 - DIM_OFF * 2 - TITLE_H - LEGEND_H;
+      const scale = Math.min(avW / totalW, avH / totalH) * zoom;
+
+      canvas.width = Math.round(totalW * scale) + MARGIN * 2 + DIM_OFF * 2 + 4;
+      canvas.height = Math.round(totalH * scale) + MARGIN * 2 + DIM_OFF * 2 + TITLE_H + LEGEND_H + 4;
+
+      // Save to shared state for mouse handlers
+      _positions = positions; _scale = scale;
+      _startX = MARGIN + DIM_OFF; _startY = MARGIN + DIM_OFF + TITLE_H;
+
+      // ── Background ───────────────────────────────────────────────────
+      ctx.fillStyle = viewColor ? '#c8c4bb' : '#e8e8e8';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // ── Title ────────────────────────────────────────────────────────
+      const projName = document.getElementById('proj-name').value || 'Floor Plan';
+      ctx.fillStyle = '#2d5a27'; ctx.font = 'bold 13px DM Mono,monospace';
+      ctx.textAlign = 'left'; ctx.fillText('PLANR · 2D', MARGIN, 22);
+      ctx.fillStyle = '#333'; ctx.font = '600 12px Sora,sans-serif';
+      ctx.fillText(projName.toUpperCase(), MARGIN, 38);
+      ctx.textAlign = 'right'; ctx.font = '400 10px DM Mono,monospace'; ctx.fillStyle = '#888';
+      ctx.fillText(`1:${Math.round(1 / scale * 1000)} · ${new Date().toLocaleDateString()}`, canvas.width - MARGIN, 30);
+
+      // ── Outer boundary ───────────────────────────────────────────────
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(_startX, _startY, totalW * scale, totalH * scale);
+
+      // ── Draw rooms ───────────────────────────────────────────────────
+      rooms.forEach((room, i) => {
+        const p = positions[i];
+        const px = _startX + p.mx * scale, py = _startY + p.mz * scale;
+        const pw = p.rw * scale, ph = p.rl * scale;
+        drawRoom(ctx, room, px, py, pw, ph, scale);
+      });
+
+      // ── Dimension lines ──────────────────────────────────────────────
+      if (showDims) drawExteriorDims(ctx, positions, scale, _startX, _startY, totalW, totalH);
+
+      // ── Furniture ────────────────────────────────────────────────────
+      if (showFurn && furnItems.length > 0) {
+        furnItems.forEach((f, i) => {
+          if (f.cw < 2 || f.ch < 2) return;
+          ctx.save();
+          if (f.rotation) {
+            ctx.translate(f.cx + f.cw / 2, f.cy + f.ch / 2);
+            ctx.rotate(f.rotation * Math.PI / 180);
+            drawFurnitureItem(ctx, f.type, -f.cw / 2, -f.ch / 2, f.cw, f.ch);
+          } else {
+            drawFurnitureItem(ctx, f.type, f.cx, f.cy, f.cw, f.ch);
+          }
+          ctx.restore();
+
+          if (i === selectedFurnIdx) {
+            ctx.strokeStyle = '#00cc66'; ctx.lineWidth = 2;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(f.cx - 2, f.cy - 2, f.cw + 4, f.ch + 4);
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#00cc66'; ctx.font = '9px DM Mono,monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${f.mmW}×${f.mmD}mm`, f.cx + f.cw / 2, f.cy - 5);
+            ctx.fillText(f.skuCode || '', f.cx + f.cw / 2, f.cy + f.ch + 12);
+          }
+        });
+      }
+
+      // ── Scale bar & north ────────────────────────────────────────────
+      drawScaleBar(ctx, MARGIN, canvas.height - LEGEND_H + 16, scale);
+      drawNorth(ctx, canvas.width - MARGIN - 28, _startY + 28);
+      ctx.textAlign = 'left';
+    }
+
+    function renderSourcePlanCanvas(canvas, ctx) {
+      const avW = 1600 - MARGIN * 2;
+      const avH = 1100 - MARGIN * 2 - TITLE_H - LEGEND_H;
+      const scale = Math.min(avW / imgNatW, avH / imgNatH) * zoom;
+      const drawW = Math.round(imgNatW * scale);
+      const drawH = Math.round(imgNatH * scale);
+
+      canvas.width = drawW + MARGIN * 2 + 4;
+      canvas.height = drawH + MARGIN * 2 + TITLE_H + LEGEND_H + 4;
+
+      _scale = scale;
+      _startX = MARGIN;
+      _startY = MARGIN + TITLE_H;
+      _positions = rooms.map(room => ({
+        mx: (room.xn || 0) * imgNatW,
+        mz: (room.yn || 0) * imgNatH,
+        rw: Math.max(1, (room.wn || 0.12) * imgNatW),
+        rl: Math.max(1, (room.hn || 0.12) * imgNatH),
+      }));
+
+      ctx.fillStyle = '#ebe7df';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const projName = document.getElementById('proj-name').value || 'Floor Plan';
+      ctx.fillStyle = '#2d5a27';
+      ctx.font = 'bold 13px DM Mono,monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText('PLANR - SOURCE OVERLAY', MARGIN, 22);
+      ctx.fillStyle = '#333';
+      ctx.font = '600 12px Sora,sans-serif';
+      ctx.fillText(projName.toUpperCase(), MARGIN, 38);
+      ctx.textAlign = 'right';
+      ctx.font = '400 10px DM Mono,monospace';
+      ctx.fillStyle = '#777';
+      ctx.fillText(`${imgNatW}x${imgNatH}px`, canvas.width - MARGIN, 30);
+
+      ctx.save();
+      if (!viewColor) ctx.filter = 'grayscale(1)';
+      ctx.drawImage(uploadedPlanImage, _startX, _startY, drawW, drawH);
+      ctx.restore();
+
+      ctx.strokeStyle = 'rgba(45, 55, 50, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(_startX, _startY, drawW, drawH);
+
+      if (!rooms.length) {
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(_startX + 12, _startY + 12, 260, 28);
+        ctx.fillStyle = '#444';
+        ctx.font = '11px Sora,sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('Click "Extract rooms" to annotate this plan.', _startX + 22, _startY + 30);
+        return;
+      }
+
+      rooms.forEach((room, i) => {
+        const p = _positions[i];
+        if (!p) return;
+        const px = _startX + p.mx * scale;
+        const py = _startY + p.mz * scale;
+        const pw = p.rw * scale;
+        const ph = p.rl * scale;
+        drawRoomOverlay(ctx, room, px, py, pw, ph);
+      });
+
+      if (showFurn && furnItems.length > 0) {
+        furnItems.forEach((f, i) => {
+          if (f.cw < 2 || f.ch < 2) return;
+          ctx.save();
+          ctx.globalAlpha = 0.88;
+          if (f.rotation) {
+            ctx.translate(f.cx + f.cw / 2, f.cy + f.ch / 2);
+            ctx.rotate(f.rotation * Math.PI / 180);
+            drawFurnitureItem(ctx, f.type, -f.cw / 2, -f.ch / 2, f.cw, f.ch);
+          } else {
+            drawFurnitureItem(ctx, f.type, f.cx, f.cy, f.cw, f.ch);
+          }
+          ctx.restore();
+
+          if (i === selectedFurnIdx) {
+            ctx.strokeStyle = '#00cc66';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 3]);
+            ctx.strokeRect(f.cx - 2, f.cy - 2, f.cw + 4, f.ch + 4);
+            ctx.setLineDash([]);
+          }
+        });
+      }
+
+      ctx.fillStyle = '#555';
+      ctx.font = '10px Sora,sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('Original plan preserved. Extracted rooms and doors are shown as overlays.', MARGIN, canvas.height - 18);
+    }
+
+    function colorWithAlpha(hex, alpha) {
+      if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) {
+        return `rgba(80, 80, 80, ${alpha})`;
+      }
+      let value = hex.slice(1);
+      if (value.length === 3) value = value.split('').map(ch => ch + ch).join('');
+      const num = parseInt(value, 16);
+      const r = (num >> 16) & 255;
+      const g = (num >> 8) & 255;
+      const b = num & 255;
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function drawRoomOverlay(ctx, room, px, py, pw, ph) {
+      const c = ROOM_COLORS[room.type] || ROOM_COLORS.default;
+      const stroke = viewColor ? c.wall : '#222';
+      const fill = viewColor ? colorWithAlpha(c.fill, 0.18) : 'rgba(255,255,255,0.12)';
+      const chipFill = 'rgba(255,255,255,0.88)';
+      const label = (room.name || 'ROOM').toUpperCase();
+      const dims = `${(room.w / 1000).toFixed(2)}m x ${(room.l / 1000).toFixed(2)}m`;
+      const area = `${((room.w / 1000) * (room.l / 1000)).toFixed(1)} m²`;
+      const lineW = Math.max(2, Math.min(4, Math.round(Math.min(pw, ph) / 38)));
+      const inset = lineW / 2;
+
+      ctx.save();
+      ctx.fillStyle = fill;
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = lineW;
+      ctx.setLineDash([8, 4]);
+      ctx.strokeRect(px + inset, py + inset, Math.max(1, pw - lineW), Math.max(1, ph - lineW));
+      ctx.setLineDash([]);
+
+      const fontSize = Math.max(10, Math.min(16, pw / 9));
+      ctx.font = `600 ${fontSize}px Sora,sans-serif`;
+      const labelWidth = ctx.measureText(label).width;
+      const metaLines = [];
+      if (showDims) metaLines.push(dims);
+      if (showArea) metaLines.push(area);
+      ctx.font = `600 ${fontSize}px Sora,sans-serif`;
+      const metaFont = Math.max(9, fontSize - 2);
+      const metaWidth = metaLines.reduce((max, line) => {
+        ctx.font = `400 ${metaFont}px DM Mono,monospace`;
+        return Math.max(max, ctx.measureText(line).width);
+      }, 0);
+      const chipW = Math.min(pw - 8, Math.max(labelWidth, metaWidth) + 16);
+      const chipH = 10 + fontSize + (metaLines.length * (metaFont + 3)) + 6;
+      if (chipW > 24 && ph > chipH + 6) {
+        ctx.fillStyle = chipFill;
+        ctx.fillRect(px + 4, py + 4, chipW, chipH);
+        ctx.fillStyle = stroke;
+        ctx.font = `600 ${fontSize}px Sora,sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.fillText(label, px + 12, py + 8 + fontSize);
+        metaLines.forEach((line, idx) => {
+          ctx.font = `400 ${metaFont}px DM Mono,monospace`;
+          ctx.fillStyle = '#555';
+          ctx.fillText(line, px + 12, py + 14 + fontSize + ((idx + 1) * (metaFont + 3)));
+        });
+      }
+      ctx.restore();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DRAW ONE ROOM
+    // ═══════════════════════════════════════════════════════════════════
+    function drawRoom(ctx, room, px, py, pw, ph, scale) {
+      const c = viewColor ? (ROOM_COLORS[room.type] || ROOM_COLORS.default) : { fill: '#fff', wall: '#222', label: '#333' };
+      const wt = Math.max(3, Math.round(120 * scale));
+
+      ctx.fillStyle = c.fill;
+      ctx.fillRect(px, py, pw, ph);
+
+      if (showFurn && pw > 30 && ph > 30) {
+        ctx.save();
+        ctx.beginPath(); ctx.rect(px + wt, py + wt, pw - wt * 2, ph - wt * 2); ctx.clip();
+        const items = placeFurniture(room, scale);
+        items.forEach(item => {
+          drawFurnitureItem(ctx, item.type, px + wt + item.x * scale, py + wt + item.y * scale, item.w * scale, item.h * scale);
+        });
+        ctx.restore();
+      }
+
+      ctx.fillStyle = c.wall;
+      ctx.fillRect(px, py, pw, wt);
+      ctx.fillRect(px, py + ph - wt, pw, wt);
+      ctx.fillRect(px, py, wt, ph);
+      ctx.fillRect(px + pw - wt, py, wt, ph);
+
+      const fs = Math.max(7, Math.min(11, pw / 12));
+      ctx.textAlign = 'center';
+      const labelY = py + ph * (showFurn && ph > 80 ? 0.76 : 0.50);
+      ctx.fillStyle = c.label;
+      ctx.font = `600 ${fs}px Sora,sans-serif`;
+      ctx.fillText(room.name.toUpperCase(), px + pw / 2, labelY);
+
+      if (showArea) {
+        const area = ((room.w / 1000) * (room.l / 1000)).toFixed(1);
+        ctx.font = `400 ${Math.max(6, fs - 1)}px DM Mono,monospace`;
+        ctx.fillStyle = c.label + 'bb';
+        ctx.fillText(area + ' m²', px + pw / 2, labelY + fs + 2);
+      }
+
+      if (showDims && pw > 50) {
+        ctx.font = `400 ${Math.max(6, Math.min(9, pw / 14))}px DM Mono,monospace`;
+        ctx.fillStyle = '#666';
+        ctx.fillText(`${(room.w / 1000).toFixed(2)}m`, px + pw / 2, py + wt + 10);
+        ctx.save(); ctx.translate(px + wt + 9, py + ph / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(`${(room.l / 1000).toFixed(2)}m`, 0, 0);
+        ctx.restore();
+      }
+      ctx.textAlign = 'left';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FURNITURE PLACEMENT (returns items in mm relative to room interior)
+    // ═══════════════════════════════════════════════════════════════════
+    function placeFurniture(room, scale) {
+      const W = room.w, L = room.l;
+      const PAD = 200, items = [], wt = 120;
+      if (room.type === 'bedroom') {
+        const bW = Math.min(1800, W - PAD * 2), bH = Math.min(2100, L * 0.52);
+        if (bW > 600 && bH > 800) {
+          const bx = (W - wt * 2 - bW) / 2, by = PAD / 2;
+          items.push({ type: 'bed', x: bx, y: by, w: bW, h: bH });
+          const sW = Math.min(500, bx - 80), sH = Math.min(400, bH * 0.45);
+          if (sW > 120) {
+            items.push({ type: 'bside', x: bx - sW - 60, y: by, w: sW, h: sH });
+            items.push({ type: 'bside', x: bx + bW + 60, y: by, w: sW, h: sH });
+          }
+        }
+        const wdW = Math.min(2940, W - wt * 2 - PAD), wdH = Math.min(620, L * 0.15);
+        if (wdW > 500) items.push({ type: 'wardrobe', x: (W - wt * 2 - wdW) / 2, y: L - wt * 2 - wdH - PAD / 2, w: wdW, h: wdH });
+      } else if (room.type === 'living') {
+        const sW = Math.min(2000, W - PAD * 2), sH = Math.min(775, L * 0.22);
+        if (sW > 600) {
+          const sx = (W - wt * 2 - sW) / 2, sy = L - wt * 2 - sH - PAD / 2;
+          items.push({ type: 'sofa', x: sx, y: sy, w: sW, h: sH });
+          const tW = Math.min(1200, sW * 0.65), tH = Math.min(600, sH * 0.75);
+          items.push({ type: 'ctable', x: sx + (sW - tW) / 2, y: sy - tH - 180, w: tW, h: tH });
+        }
+      } else if (room.type === 'dining') {
+        const tW = Math.min(1200, W - wt * 2 - PAD * 2), tH = Math.min(1200, L - wt * 2 - PAD * 2);
+        if (tW > 400 && tH > 400) {
+          const tx = (W - wt * 2 - tW) / 2, ty = (L - wt * 2 - tH) / 2;
+          items.push({ type: 'dtable', x: tx, y: ty, w: tW, h: tH });
+          const cW = Math.min(450, tW * 0.35), cH = Math.min(380, tH * 0.3);
+          items.push({ type: 'dchair', x: tx + (tW - cW) / 2, y: ty - cH - 60, w: cW, h: cH });
+          items.push({ type: 'dchair', x: tx + (tW - cW) / 2, y: ty + tH + 60, w: cW, h: cH });
+          if (tH > 600) {
+            items.push({ type: 'dchair', x: tx - cW - 60, y: ty + (tH - cH) / 2, w: cW, h: cH });
+            items.push({ type: 'dchair', x: tx + tW + 60, y: ty + (tH - cH) / 2, w: cW, h: cH });
+          }
+        }
+      } else if (room.type === 'kitchen') {
+        const cbW = Math.min(1800, W - wt * 2 - PAD), cbH = Math.min(580, L * 0.3);
+        items.push({ type: 'kitupper', x: (W - wt * 2 - cbW) / 2, y: PAD / 4, w: cbW, h: cbH });
+      } else if (room.type === 'bathroom') {
+        const tW = Math.min(400, W * 0.28), tH = Math.min(680, L * 0.22);
+        items.push({ type: 'toilet', x: PAD / 4, y: PAD / 4, w: tW, h: tH });
+        const sW = Math.min(500, W * 0.32), sH = Math.min(380, tH * 0.6);
+        if (PAD / 4 + tW + 50 + sW < W - wt * 2) items.push({ type: 'vanity', x: PAD / 4 + tW + 80, y: PAD / 4, w: sW, h: sH });
+        if (L > 2200) {
+          const bW = Math.min(760, W - wt * 2 - PAD), bH = Math.min(1600, L * 0.38);
+          items.push({ type: 'bathtub', x: (W - wt * 2 - bW) / 2, y: L - wt * 2 - bH - PAD / 4, w: bW, h: bH });
+        }
+      }
+      return items;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FURNITURE DRAWING
+    // ═══════════════════════════════════════════════════════════════════
+    function drawFurnitureItem(ctx, type, x, y, w, h) {
+      if (w < 4 || h < 4) return;
+      switch (type) {
+        case 'bed': drawBed(ctx, x, y, w, h); break;
+        case 'bside': drawBeside(ctx, x, y, w, h); break;
+        case 'sofa': drawSofa(ctx, x, y, w, h); break;
+        case 'ctable': drawCoffeeTable(ctx, x, y, w, h); break;
+        case 'dtable': drawDiningTable(ctx, x, y, w, h); break;
+        case 'dchair': drawDiningChair(ctx, x, y, w, h); break;
+        case 'wardrobe': drawWardrobe(ctx, x, y, w, h); break;
+        case 'toilet': drawToilet(ctx, x, y, w, h); break;
+        case 'vanity': drawSink(ctx, x, y, w, h); break;
+        case 'bathtub': drawBathtub(ctx, x, y, w, h); break;
+        case 'kitupper': drawKitchenCounter(ctx, x, y, w, h); break;
+      }
+    }
+
+    function drawBed(ctx, x, y, w, h) {
+      ctx.fillStyle = '#c8a070'; ctx.fillRect(x, y, w, h);
+      const hbH = Math.max(5, h * 0.14);
+      ctx.fillStyle = '#7a5020'; ctx.fillRect(x, y, w, hbH);
+      const m = Math.max(1.5, w * 0.02);
+      ctx.fillStyle = '#f0e8d8'; ctx.fillRect(x + m, y + hbH, w - m * 2, h - hbH - m);
+      if (w > 28) {
+        const pw = (w - m * 2 - 6) * 0.42, ph = Math.max(4, Math.min(h * 0.14, 12));
+        ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#d0c0a0'; ctx.lineWidth = 0.4;
+        ctx.fillRect(x + m + 3, y + hbH + 3, pw, ph); ctx.strokeRect(x + m + 3, y + hbH + 3, pw, ph);
+        ctx.fillRect(x + w - m - pw - 3, y + hbH + 3, pw, ph); ctx.strokeRect(x + w - m - pw - 3, y + hbH + 3, pw, ph);
+      }
+      ctx.strokeStyle = '#b0a090'; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(x + m, y + h * 0.35); ctx.lineTo(x + w - m, y + h * 0.35); ctx.stroke();
+      ctx.strokeStyle = '#6a4820'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawBeside(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d4a860'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#8a6830'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(x + 2, y + h * 0.5); ctx.lineTo(x + w - 2, y + h * 0.5); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.3, Math.min(2, w * 0.1), 0, Math.PI * 2);
+      ctx.fillStyle = '#6a4820'; ctx.fill();
+      ctx.strokeStyle = '#7a5830'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawSofa(ctx, x, y, w, h) {
+      const armW = Math.max(4, w * 0.09), backH = Math.max(5, h * 0.3);
+      ctx.fillStyle = '#686868'; ctx.fillRect(x + armW, y + backH, w - armW * 2, h - backH);
+      ctx.fillStyle = '#484848'; ctx.fillRect(x + armW, y, w - armW * 2, backH);
+      ctx.fillStyle = '#383838'; ctx.fillRect(x, y, armW, h); ctx.fillRect(x + w - armW, y, armW, h);
+      const n = w > 120 ? 3 : 2;
+      ctx.strokeStyle = '#909090'; ctx.lineWidth = 0.4;
+      for (let i = 1; i < n; i++) {
+        const cx = x + armW + (w - armW * 2) * (i / n);
+        ctx.beginPath(); ctx.moveTo(cx, y + backH + 2); ctx.lineTo(cx, y + h - 2); ctx.stroke();
+      }
+      ctx.strokeStyle = '#202020'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawCoffeeTable(ctx, x, y, w, h) {
+      ctx.fillStyle = '#404040'; ctx.fillRect(x, y, w, h);
+      const m = Math.max(2, Math.min(5, w * 0.05));
+      ctx.fillStyle = '#909090'; ctx.fillRect(x + m, y + m, w - m * 2, h - m * 2);
+      ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawDiningTable(ctx, x, y, w, h) {
+      ctx.fillStyle = '#5a3a1a'; ctx.fillRect(x, y, w, h);
+      const m = Math.max(2, Math.min(6, w * 0.04));
+      ctx.fillStyle = '#8a5a2a'; ctx.fillRect(x + m, y + m, w - m * 2, h - m * 2);
+      ctx.strokeStyle = '#3a2a0a'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawDiningChair(ctx, x, y, w, h) {
+      ctx.fillStyle = '#6a4820'; ctx.fillRect(x, y, w, h * 0.35);
+      ctx.fillStyle = '#9a7840'; ctx.fillRect(x + w * 0.1, y + h * 0.35, w * 0.8, h * 0.65);
+      ctx.strokeStyle = '#4a2800'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawWardrobe(ctx, x, y, w, h) {
+      ctx.fillStyle = '#a07840'; ctx.fillRect(x, y, w, h);
+      const doors = Math.max(2, Math.round(w / 30));
+      ctx.strokeStyle = '#6a4820'; ctx.lineWidth = 1;
+      for (let i = 0; i <= doors; i++) { const dx = x + (w / doors) * i; ctx.beginPath(); ctx.moveTo(dx, y); ctx.lineTo(dx, y + h); ctx.stroke(); }
+      ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawToilet(ctx, x, y, w, h) {
+      ctx.fillStyle = '#e0e8f0'; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#c0d0e0'; ctx.fillRect(x + w * 0.1, y + h * 0.15, w * 0.8, h * 0.25);
+      ctx.beginPath(); ctx.ellipse(x + w / 2, y + h * 0.68, w * 0.42, h * 0.28, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#d8e8f4'; ctx.fill();
+      ctx.strokeStyle = '#5090b0'; ctx.lineWidth = 1.2; ctx.stroke();
+      ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawSink(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d0dce8'; ctx.fillRect(x, y, w, h);
+      const m = Math.max(2, w * 0.08);
+      ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w / 2 - m, h / 2 - m, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#b8ccd8'; ctx.fill(); ctx.strokeStyle = '#5080a0'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.strokeStyle = '#7090b0'; ctx.lineWidth = 1.2; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawBathtub(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d8e8f4'; ctx.fillRect(x, y, w, h);
+      const m = Math.max(3, w * 0.08);
+      ctx.fillStyle = '#c0d8ec'; ctx.fillRect(x + m, y + m, w - m * 2, h - m * 2);
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.75, Math.min(w, h) * 0.1, 0, Math.PI * 2);
+      ctx.fillStyle = '#a0c0dc'; ctx.fill();
+      ctx.strokeStyle = '#5090b0'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    function drawKitchenCounter(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d4c8a8'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#a09070'; ctx.lineWidth = 0.5;
+      const segments = Math.max(1, Math.round(w / 28));
+      for (let i = 1; i < segments; i++) { const dx = x + (w / segments) * i; ctx.beginPath(); ctx.moveTo(dx, y); ctx.lineTo(dx, y + h); ctx.stroke(); }
+      if (h > 12) {
+        ctx.beginPath(); ctx.arc(x + w * 0.3, y + h / 2, Math.min(h * 0.3, 7), 0, Math.PI * 2); ctx.strokeStyle = '#888'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.beginPath(); ctx.arc(x + w * 0.55, y + h / 2, Math.min(h * 0.3, 7), 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.strokeStyle = '#8a7850'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // DIMENSION LINES & DECORATIONS
+    // ═══════════════════════════════════════════════════════════════════
+    function drawExteriorDims(ctx, positions, scale, startX, startY, totalW, totalH) {
+      ctx.fillStyle = '#333'; ctx.strokeStyle = '#333'; ctx.lineWidth = 0.8;
+      ctx.font = '8px DM Mono,monospace';
+      // Overall width top
+      const yw = startY - DIM_OFF + 8;
+      drawDimArrow(ctx, startX, yw, startX + totalW * scale, yw, false);
+      ctx.textAlign = 'center'; ctx.fillText(`${(totalW / 1000).toFixed(2)}m`, startX + totalW * scale / 2, yw - 4);
+      // Overall height left
+      const xh = startX - DIM_OFF + 8;
+      drawDimArrow(ctx, xh, startY, xh, startY + totalH * scale, true);
+      ctx.save(); ctx.translate(xh - 4, startY + totalH * scale / 2); ctx.rotate(-Math.PI / 2);
+      ctx.fillText(`${(totalH / 1000).toFixed(2)}m`, 0, 0); ctx.restore();
+      // Column widths
+      const xEdges = [...new Set(positions.flatMap(p => [p.mx, p.mx + p.rw]))].sort((a, b) => a - b);
+      for (let i = 0; i < xEdges.length - 1; i++) {
+        const x1 = startX + xEdges[i] * scale, x2 = startX + xEdges[i + 1] * scale, yw2 = startY - 18;
+        drawDimArrow(ctx, x1, yw2, x2, yw2, false);
+        ctx.fillText(`${((xEdges[i + 1] - xEdges[i]) / 1000).toFixed(2)}m`, (x1 + x2) / 2, yw2 - 4);
+      }
+      // Row heights
+      const yEdges = [...new Set(positions.flatMap(p => [p.mz, p.mz + p.rl]))].sort((a, b) => a - b);
+      for (let i = 0; i < yEdges.length - 1; i++) {
+        const y1 = startY + yEdges[i] * scale, y2 = startY + yEdges[i + 1] * scale, xd = startX - 18;
+        drawDimArrow(ctx, xd, y1, xd, y2, true);
+        ctx.save(); ctx.translate(xd - 4, (y1 + y2) / 2); ctx.rotate(-Math.PI / 2);
+        ctx.fillText(`${((yEdges[i + 1] - yEdges[i]) / 1000).toFixed(2)}m`, 0, 0); ctx.restore();
+      }
+    }
+
+    function drawDimArrow(ctx, x1, y1, x2, y2, vert) {
+      const as = 4.5;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      if (!vert) {
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + as, y1 - as / 2); ctx.lineTo(x1 + as, y1 + as / 2); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - as, y2 - as / 2); ctx.lineTo(x2 - as, y2 + as / 2); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - as / 2, y1 + as); ctx.lineTo(x1 + as / 2, y1 + as); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - as / 2, y2 - as); ctx.lineTo(x2 + as / 2, y2 - as); ctx.closePath(); ctx.fill();
+      }
+    }
+
+    function drawScaleBar(ctx, x, y, scale) {
+      const barMM = 1000, barPx = barMM * scale;
+      ctx.fillStyle = '#333'; ctx.fillRect(x, y, barPx, 3);
+      ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x, y + 6); ctx.moveTo(x + barPx, y - 3); ctx.lineTo(x + barPx, y + 6);
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.font = '8px DM Mono,monospace'; ctx.textAlign = 'center'; ctx.fillText('1 000 mm', x + barPx / 2, y + 14);
+      ctx.textAlign = 'left';
+    }
+
+    function drawNorth(ctx, x, y) {
+      ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2);
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x - 4, y + 5); ctx.lineTo(x, y + 2); ctx.lineTo(x + 4, y + 5); ctx.closePath();
+      ctx.fillStyle = '#555'; ctx.fill();
+      ctx.font = 'bold 8px Sora,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#333'; ctx.fillText('N', x, y + 20);
+    }
+
+    // ── Auto-populate furnItems from placeFurniture each room ────────────
+    function autoPopulateFurniture() {
+      furnItems = [];
+      rooms.forEach((room, ri) => {
+        const p = _positions[ri]; if (!p) return;
+        const px = _startX + p.mx * _scale, py = _startY + p.mz * _scale;
+        const pw = p.rw * _scale, ph = p.rl * _scale;
+        // Compute mm→px scale for THIS room
+        const mmToCanvasX = pw / room.w, mmToCanvasY = ph / room.l;
+        const wt = Math.max(3, Math.round(120 * _scale)); // wall px
+        const items = placeFurniture(room, _scale);
+        items.forEach(item => {
+          const sku = SKUS.find(s => s.cat === item.type) || null;
+          furnItems.push({
+            id: Date.now() + Math.random(),
+            type: item.type,
+            skuCode: sku ? sku.code : null,
+            mmW: item.w, mmD: item.h,
+            // Canvas coords (px)
+            cx: px + wt + item.x * mmToCanvasX,
+            cy: py + wt + item.y * mmToCanvasY,
+            cw: item.w * mmToCanvasX,
+            ch: item.h * mmToCanvasY,
+            rotation: 0,
+            roomIdx: ri
+          });
+        });
+      });
+    }
+
+    // ── Collision check (AABB) — returns true if f overlaps any other item ──
+    function hasCollision(f, exceptIdx) {
+      return furnItems.some((o, i) => {
+        if (i === exceptIdx) return false;
+        return !(f.cx + f.cw <= o.cx || o.cx + o.cw <= f.cx ||
+          f.cy + f.ch <= o.cy || o.cy + o.ch <= f.cy);
+      });
+    }
+
+    // ── Mouse interaction ────────────────────────────────────────────────
+    function initCanvasInteraction() {
+      const canvas = document.getElementById('plan-canvas');
+
+      function getPos(e) {
+        const r = canvas.getBoundingClientRect();
+        const scl = canvas.width / r.width;
+        return { x: (e.clientX - r.left) * scl, y: (e.clientY - r.top) * scl };
+      }
+
+      function hitTest(px, py) {
+        for (let i = furnItems.length - 1; i >= 0; i--) {
+          const f = furnItems[i];
+          if (px >= f.cx && px <= f.cx + f.cw && py >= f.cy && py <= f.cy + f.ch)
+            return i;
+        }
+        return -1;
+      }
+
+      canvas.addEventListener('mousedown', e => {
+        if (!showFurn) return;
+        const { x, y } = getPos(e);
+        const hit = hitTest(x, y);
+        selectedFurnIdx = hit;
+        if (hit >= 0) {
+          isDragging = true;
+          dragOffX = x - furnItems[hit].cx;
+          dragOffY = y - furnItems[hit].cy;
+          canvas.style.cursor = 'grabbing';
+          showSKUSwapPanel(hit);
+        }
+        renderCanvas();
+      });
+
+      canvas.addEventListener('mousemove', e => {
+        const { x, y } = getPos(e);
+        if (isDragging && selectedFurnIdx >= 0) {
+          const f = furnItems[selectedFurnIdx];
+          const newCx = x - dragOffX, newCy = y - dragOffY;
+          const prev = { cx: f.cx, cy: f.cy };
+          f.cx = newCx; f.cy = newCy;
+          if (hasCollision(f, selectedFurnIdx)) {
+            // Revert if overlapping
+            f.cx = prev.cx; f.cy = prev.cy;
+          }
+          renderCanvas();
+        } else {
+          canvas.style.cursor = hitTest(x, y) >= 0 ? 'grab' : 'default';
+        }
+      });
+
+      canvas.addEventListener('mouseup', () => {
+        isDragging = false;
+        canvas.style.cursor = 'default';
+      });
+
+      canvas.addEventListener('dblclick', e => {
+        if (!showFurn) return;
+        const { x, y } = getPos(e);
+        const hit = hitTest(x, y);
+        if (hit >= 0) {
+          const f = furnItems[hit];
+          // Preserve visual center before rotating
+          const centerX = f.cx + f.cw / 2;
+          const centerY = f.cy + f.ch / 2;
+          // Rotate 90°
+          f.rotation = (f.rotation + 90) % 360;
+          // Swap canvas dimensions so hit-box is correct after rotation
+          [f.cw, f.ch] = [f.ch, f.cw];
+          [f.mmW, f.mmD] = [f.mmD, f.mmW];
+          // Reposition so center stays fixed
+          f.cx = centerX - f.cw / 2;
+          f.cy = centerY - f.ch / 2;
+          renderCanvas();
+        }
+      });
+    }
+
+    // ── SKU swap panel (in sidebar) ──────────────────────────────────────
+    function showSKUSwapPanel(furnIdx) {
+      const f = furnItems[furnIdx];
+      const compatibles = SKUS.filter(s => s.cat === f.type);
+      const c = document.getElementById('sku-list'); if (!c) return;
+      c.innerHTML = `<div class="slabel" style="color:#00cc66">Selected: ${f.skuCode || f.type}</div>` +
+        SKUS.map(s => {
+          const isCurrent = s.code === f.skuCode;
+          const isCompat = s.cat === f.type;
+          return `<div class="sku-card ${isCompat ? 'sku-compat' : ''} ${isCurrent ? 'sku-active' : ''}"
+            onclick="${isCompat ? `swapFurnitureSKU(${furnIdx},'${s.code}')` : ''}">
+            <div class="sku-code">${s.code}${isCurrent ? ' ✓' : ''}</div>
+            <div class="sku-name">${s.name}</div>
+            <div class="sku-dims">W:${s.w} D:${s.d} H:${s.h}mm</div>
+            <div class="sku-price">₹${s.price.toLocaleString()}</div>
+          </div>`;
+        }).join('');
+      sbTab('skus');
+    }
+
+    function swapFurnitureSKU(furnIdx, skuCode) {
+      const f = furnItems[furnIdx];
+      const sku = SKUS.find(s => s.code === skuCode); if (!sku) return;
+      // Recalculate canvas size from new mm dimensions
+      const room = rooms[f.roomIdx];
+      const p = _positions[f.roomIdx]; if (!p || !room) return;
+      const pw = p.rw * _scale, ph = p.rl * _scale;
+      const mmToCanvasX = pw / room.w, mmToCanvasY = ph / room.l;
+      const isRotated = f.rotation % 180 !== 0;
+      f.skuCode = sku.code; f.mmW = sku.w; f.mmD = sku.d;
+      f.cw = (isRotated ? sku.d : sku.w) * mmToCanvasX;
+      f.ch = (isRotated ? sku.w : sku.d) * mmToCanvasY;
+      showSKUSwapPanel(furnIdx);
+      buildBOM(); renderCanvas();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FURNITURE PLACEMENT  (returns items with x,y,w,h in mm relative to room interior)
+    // ═══════════════════════════════════════════════════════════════════
+    function placeFurniture(room, scale) {
+      const W = room.w, L = room.l;
+      const PAD = 200; // 200mm from wall
+      const items = [];
+      const wt = 120; // wall thickness in mm
+
+      if (room.type === 'bedroom') {
+        // King bed — headboard against top, centred
+        const bW = Math.min(1800, W - PAD * 2), bH = Math.min(2100, L * 0.52);
+        if (bW > 600 && bH > 800) {
+          const bx = (W - wt * 2 - bW) / 2, by = PAD / 2;
+          items.push({ type: 'bed', x: bx, y: by, w: bW, h: bH });
+          // Bedside tables
+          const sW = Math.min(500, bx - 80), sH = Math.min(400, bH * 0.45);
+          if (sW > 120) {
+            items.push({ type: 'bside', x: bx - sW - 60, y: by, w: sW, h: sH });
+            items.push({ type: 'bside', x: bx + bW + 60, y: by, w: sW, h: sH });
+          }
+        }
+        // Wardrobe — bottom wall
+        const wdW = Math.min(2940, W - wt * 2 - PAD), wdH = Math.min(620, L * 0.15);
+        if (wdW > 500) {
+          items.push({ type: 'wardrobe', x: (W - wt * 2 - wdW) / 2, y: L - wt * 2 - wdH - PAD / 2, w: wdW, h: wdH });
+        }
+
+      } else if (room.type === 'living') {
+        // Sofa — back against bottom, centred
+        const sW = Math.min(2000, W - PAD * 2), sH = Math.min(775, L * 0.22);
+        if (sW > 600) {
+          const sx = (W - wt * 2 - sW) / 2, sy = L - wt * 2 - sH - PAD / 2;
+          items.push({ type: 'sofa', x: sx, y: sy, w: sW, h: sH });
+          // Coffee table in front
+          const tW = Math.min(1200, sW * 0.65), tH = Math.min(600, sH * 0.75);
+          items.push({ type: 'ctable', x: sx + (sW - tW) / 2, y: sy - tH - 180, w: tW, h: tH });
+        }
+
+      } else if (room.type === 'kitchen' || room.type === 'dining') {
+        // Dining table + chairs, centred
+        const tW = Math.min(1200, W - wt * 2 - PAD * 2), tH = Math.min(1200, L - wt * 2 - PAD * 2);
+        if (tW > 400 && tH > 400) {
+          const tx = (W - wt * 2 - tW) / 2, ty = (L - wt * 2 - tH) / 2;
+          items.push({ type: 'dtable', x: tx, y: ty, w: tW, h: tH });
+          // Chairs around table
+          const cW = Math.min(450, tW * 0.35), cH = Math.min(380, tH * 0.3);
+          items.push({ type: 'dchair', x: tx + (tW - cW) / 2, y: ty - cH - 60, w: cW, h: cH, rot: 0 });
+          items.push({ type: 'dchair', x: tx + (tW - cW) / 2, y: ty + tH + 60, w: cW, h: cH, rot: 180 });
+          if (tH > 600) {
+            items.push({ type: 'dchair', x: tx - cW - 60, y: ty + (tH - cH) / 2, w: cW, h: cH, rot: 270 });
+            items.push({ type: 'dchair', x: tx + tW + 60, y: ty + (tH - cH) / 2, w: cW, h: cH, rot: 90 });
+          }
+        }
+        // Kitchen counter L-shape against top & left walls
+        if (room.type === 'kitchen') {
+          const cbW = Math.min(1800, W - wt * 2 - PAD), cbH = Math.min(580, L * 0.16);
+          items.push({ type: 'kitupper', x: (W - wt * 2 - cbW) / 2, y: PAD / 4, w: cbW, h: cbH });
+        }
+
+      } else if (room.type === 'bathroom') {
+        // Toilet top-left
+        const tW = Math.min(400, W * 0.28), tH = Math.min(680, L * 0.22);
+        items.push({ type: 'toilet', x: PAD / 4, y: PAD / 4, w: tW, h: tH });
+        // Sink next to toilet
+        const sW = Math.min(500, W * 0.32), sH = Math.min(380, tH * 0.6);
+        if (PAD / 4 + tW + 50 + sW < W - wt * 2) {
+          items.push({ type: 'vanity', x: PAD / 4 + tW + 80, y: PAD / 4, w: sW, h: sH });
+        }
+        // Bathtub bottom
+        if (L > 2200) {
+          const bW = Math.min(760, W - wt * 2 - PAD), bH = Math.min(1600, L * 0.38);
+          items.push({ type: 'bathtub', x: (W - wt * 2 - bW) / 2, y: L - wt * 2 - bH - PAD / 4, w: bW, h: bH });
+        }
+      }
+
+      return items;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FURNITURE DRAWING FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════
+    function drawFurnitureItem(ctx, type, x, y, w, h) {
+      if (w < 4 || h < 4) return;
+      switch (type) {
+        case 'bed': drawBed(ctx, x, y, w, h); break;
+        case 'bside': drawBeside(ctx, x, y, w, h); break;
+        case 'sofa': drawSofa(ctx, x, y, w, h); break;
+        case 'ctable': drawCoffeeTable(ctx, x, y, w, h); break;
+        case 'dtable': drawDiningTable(ctx, x, y, w, h); break;
+        case 'dchair': drawDiningChair(ctx, x, y, w, h); break;
+        case 'wardrobe': drawWardrobe(ctx, x, y, w, h); break;
+        case 'toilet': drawToilet(ctx, x, y, w, h); break;
+        case 'vanity': drawSink(ctx, x, y, w, h); break;
+        case 'bathtub': drawBathtub(ctx, x, y, w, h); break;
+        case 'kitupper': drawKitchenCounter(ctx, x, y, w, h); break;
+      }
+    }
+
+    // BED — plan view: headboard top, pillows, blanket fold
+    function drawBed(ctx, x, y, w, h) {
+      // Frame
+      ctx.fillStyle = '#c8a070'; ctx.fillRect(x, y, w, h);
+      // Headboard
+      const hbH = Math.max(5, h * 0.14);
+      ctx.fillStyle = '#7a5020'; ctx.fillRect(x, y, w, hbH);
+      // Mattress
+      const m = Math.max(1.5, w * 0.02);
+      ctx.fillStyle = '#f0e8d8'; ctx.fillRect(x + m, y + hbH, w - m * 2, h - hbH - m);
+      // Pillows
+      if (w > 28) {
+        const pw = (w - m * 2 - 6) * 0.42, ph = Math.max(4, Math.min(h * 0.14, 12));
+        ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#d0c0a0'; ctx.lineWidth = 0.4;
+        ctx.fillRect(x + m + 3, y + hbH + 3, pw, ph); ctx.strokeRect(x + m + 3, y + hbH + 3, pw, ph);
+        ctx.fillRect(x + w - m - pw - 3, y + hbH + 3, pw, ph); ctx.strokeRect(x + w - m - pw - 3, y + hbH + 3, pw, ph);
+      }
+      // Fold line
+      ctx.strokeStyle = '#b0a090'; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(x + m, y + h * 0.35); ctx.lineTo(x + w - m, y + h * 0.35); ctx.stroke();
+      // Border
+      ctx.strokeStyle = '#6a4820'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // BEDSIDE TABLE
+    function drawBeside(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d4a860'; ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#8a6830'; ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(x + 2, y + h * 0.5); ctx.lineTo(x + w - 2, y + h * 0.5); ctx.stroke();
+      // handle
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h * 0.3, Math.min(2, w * 0.1), 0, Math.PI * 2);
+      ctx.fillStyle = '#6a4820'; ctx.fill();
+      ctx.strokeStyle = '#7a5830'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+    }
+
+    // SOFA — back at top, seat below, arms on sides
+    function drawSofa(ctx, x, y, w, h) {
+      const armW = Math.max(4, w * 0.09), backH = Math.max(5, h * 0.3);
+      // Seat
+      ctx.fillStyle = '#686868'; ctx.fillRect(x + armW, y + backH, w - armW * 2, h - backH);
+      // Back
+      ctx.fillStyle = '#484848'; ctx.fillRect(x + armW, y, w - armW * 2, backH);
+      // Arms
+      ctx.fillStyle = '#383838'; ctx.fillRect(x, y, armW, h); ctx.fillRect(x + w - armW, y, armW, h);
+      // Cushion dividers
+      const n = w > 120 ? 3 : 2;
+      ctx.strokeStyle = '#909090'; ctx.lineWidth = 0.4;
+      for (let i = 1; i < n; i++) {
+        const cx = x + armW + (w - armW * 2) * (i / n);
+        ctx.beginPath(); ctx.moveTo(cx, y + backH + 2); ctx.lineTo(cx, y + h - 2); ctx.stroke();
+      }
+      ctx.strokeStyle = '#202020'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // COFFEE / CENTER TABLE
+    function drawCoffeeTable(ctx, x, y, w, h) {
+      ctx.fillStyle = '#404040'; ctx.fillRect(x, y, w, h);
+      const m = Math.max(2, Math.min(5, w * 0.05));
+      ctx.fillStyle = '#909090'; ctx.fillRect(x + m, y + m, w - m * 2, h - m * 2);
+      ctx.strokeStyle = '#222'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // DINING TABLE
+    function drawDiningTable(ctx, x, y, w, h) {
+      ctx.fillStyle = '#8B6010'; ctx.fillRect(x, y, w, h);
+      // Wood grain
+      ctx.strokeStyle = '#7a5000'; ctx.lineWidth = 0.3;
+      const gs = Math.max(6, w / 7);
+      for (let gx = x + gs; gx < x + w - 1; gx += gs) { ctx.beginPath(); ctx.moveTo(gx, y + 1); ctx.lineTo(gx, y + h - 1); ctx.stroke(); }
+      ctx.strokeStyle = '#5a3800'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+    }
+
+    // DINING CHAIR (simple plan view — rectangle with back)
+    function drawDiningChair(ctx, x, y, w, h) {
+      const backH = Math.max(3, h * 0.22);
+      ctx.fillStyle = '#a07020'; ctx.fillRect(x, y + backH, w, h - backH);
+      ctx.fillStyle = '#7a5010'; ctx.fillRect(x, y, w, backH);
+      ctx.strokeStyle = '#5a3800'; ctx.lineWidth = 0.8;
+      ctx.strokeRect(x, y, w, h - backH + backH);
+    }
+
+    // WARDROBE
+    function drawWardrobe(ctx, x, y, w, h) {
+      ctx.fillStyle = '#ddd4c4'; ctx.fillRect(x, y, w, h);
+      const nDoors = Math.max(2, Math.round(w / Math.max(8, w / 4)));
+      const dw = w / nDoors;
+      ctx.strokeStyle = '#9a8a7a'; ctx.lineWidth = 0.7;
+      for (let i = 1; i < nDoors; i++) {
+        ctx.beginPath(); ctx.moveTo(x + dw * i, y + 1); ctx.lineTo(x + dw * i, y + h - 1); ctx.stroke();
+      }
+      // Handles
+      ctx.fillStyle = '#8a7a6a';
+      for (let i = 0; i < nDoors; i++) {
+        ctx.beginPath(); ctx.arc(x + dw * (i + 0.68), y + h / 2, Math.min(2.5, h * 0.08), 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.strokeStyle = '#6a5a4a'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // TOILET — plan view: tank (rectangle top) + bowl (ellipse)
+    function drawToilet(ctx, x, y, w, h) {
+      const tkH = Math.max(4, h * 0.28), m = w * 0.1;
+      // Tank
+      ctx.fillStyle = '#e0e0e0'; ctx.fillRect(x + m, y, w - m * 2, tkH);
+      ctx.strokeStyle = '#b0b0b0'; ctx.lineWidth = 0.8; ctx.strokeRect(x + m, y, w - m * 2, tkH);
+      // Bowl outer
+      ctx.fillStyle = '#f0f0f0';
+      ctx.beginPath(); ctx.ellipse(x + w / 2, y + tkH + h * 0.38, w * 0.44, h * 0.34, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#b0b0b0'; ctx.stroke();
+      // Bowl inner (seat ring)
+      ctx.beginPath(); ctx.ellipse(x + w / 2, y + tkH + h * 0.38, w * 0.32, h * 0.25, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = '#d0d0d0'; ctx.stroke();
+    }
+
+    // BATHTUB — plan view
+    function drawBathtub(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d0e8f4'; ctx.fillRect(x, y, w, h);
+      const rim = Math.max(3, Math.min(8, w * 0.07));
+      ctx.fillStyle = '#b8d8f0'; ctx.fillRect(x + rim, y + rim, w - rim * 2, h - rim * 2);
+      // Drain
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h - rim * 2, Math.min(3, rim * 0.5), 0, Math.PI * 2);
+      ctx.fillStyle = '#90b8d0'; ctx.fill();
+      // Faucet
+      ctx.fillStyle = '#a0c8e0'; ctx.fillRect(x + w * 0.35, y + rim * 0.4, w * 0.3, rim * 0.6);
+      ctx.strokeStyle = '#6090b0'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // SINK / VANITY
+    function drawSink(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d4e8f4'; ctx.fillRect(x, y, w, h);
+      // Basin oval
+      ctx.fillStyle = '#b4d4ee';
+      ctx.beginPath(); ctx.ellipse(x + w / 2, y + h / 2, w * 0.33, h * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#88b4d4'; ctx.stroke();
+      // Drain
+      ctx.beginPath(); ctx.arc(x + w / 2, y + h / 2, Math.min(2, w * 0.06), 0, Math.PI * 2);
+      ctx.fillStyle = '#6090b0'; ctx.fill();
+      ctx.strokeStyle = '#6090b0'; ctx.lineWidth = 1.5; ctx.strokeRect(x, y, w, h);
+    }
+
+    // KITCHEN COUNTER
+    function drawKitchenCounter(ctx, x, y, w, h) {
+      ctx.fillStyle = '#d8d0c8'; ctx.fillRect(x, y, w, h);
+      // Hob circles
+      if (w > 40 && h > 14) {
+        const r = Math.max(3, Math.min(7, h * 0.3));
+        const cx1 = x + w * 0.2, cx2 = x + w * 0.45, cy = y + h / 2;
+        [cx1, cx2].forEach(cx => {
+          ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.strokeStyle = '#888'; ctx.lineWidth = 0.8; ctx.stroke();
+        });
+      }
+      ctx.strokeStyle = '#a09080'; ctx.lineWidth = 1; ctx.strokeRect(x, y, w, h);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // EXTERIOR DIMENSION LINES  (like Image 2: arrows on outside edges)
+    // ═══════════════════════════════════════════════════════════════════
+    function drawExteriorDims(ctx, positions, scale, startX, startY, totalW, totalH) {
+      ctx.strokeStyle = '#444'; ctx.fillStyle = '#444';
+      ctx.font = '8.5px DM Mono,monospace'; ctx.lineWidth = 0.8;
+
+      const planRight = startX + totalW * scale;
+      const planBottom = startY + totalH * scale;
+
+      // ── Top: individual column widths ──
+      // Find unique x-column boundaries
+      const xEdges = [...new Set(positions.flatMap(p => [p.mx, p.mx + p.rw]))].sort((a, b) => a - b);
+      ctx.textAlign = 'center';
+      for (let i = 0; i < xEdges.length - 1; i++) {
+        const x1 = startX + xEdges[i] * scale;
+        const x2 = startX + xEdges[i + 1] * scale;
+        const yw = startY - 18;
+        drawDimArrow(ctx, x1, yw, x2, yw, false);
+        ctx.fillText(`${((xEdges[i + 1] - xEdges[i]) / 1000).toFixed(2)}m`, (x1 + x2) / 2, yw - 4);
+      }
+
+      // ── Left: individual row heights ──
+      const yEdges = [...new Set(positions.flatMap(p => [p.mz, p.mz + p.rl]))].sort((a, b) => a - b);
+      for (let i = 0; i < yEdges.length - 1; i++) {
+        const y1 = startY + yEdges[i] * scale;
+        const y2 = startY + yEdges[i + 1] * scale;
+        const xd = startX - 18;
+        drawDimArrow(ctx, xd, y1, xd, y2, true);
+        ctx.save(); ctx.translate(xd - 4, (y1 + y2) / 2); ctx.rotate(-Math.PI / 2);
+        ctx.fillText(`${((yEdges[i + 1] - yEdges[i]) / 1000).toFixed(2)}m`, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    function drawDimArrow(ctx, x1, y1, x2, y2, vert) {
+      const as = 4.5;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      if (!vert) {
+        // left head
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 + as, y1 - as / 2); ctx.lineTo(x1 + as, y1 + as / 2); ctx.closePath(); ctx.fill();
+        // right head
+        ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - as, y2 - as / 2); ctx.lineTo(x2 - as, y2 + as / 2); ctx.closePath(); ctx.fill();
+      } else {
+        // top head
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - as / 2, y1 + as); ctx.lineTo(x1 + as / 2, y1 + as); ctx.closePath(); ctx.fill();
+        // bottom head
+        ctx.beginPath(); ctx.moveTo(x2, y2); ctx.lineTo(x2 - as / 2, y2 - as); ctx.lineTo(x2 + as / 2, y2 - as); ctx.closePath(); ctx.fill();
+      }
+    }
+
+    function drawScaleBar(ctx, x, y, scale) {
+      const barMM = 1000, barPx = barMM * scale;
+      ctx.fillStyle = '#333'; ctx.fillRect(x, y, barPx, 3);
+      ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x, y + 6); ctx.moveTo(x + barPx, y - 3); ctx.lineTo(x + barPx, y + 6);
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.font = '8px DM Mono,monospace'; ctx.textAlign = 'center'; ctx.fillText('1 000 mm', x + barPx / 2, y + 14);
+      ctx.textAlign = 'left';
+    }
+
+    function drawNorth(ctx, x, y) {
+      ctx.beginPath(); ctx.arc(x, y, 11, 0, Math.PI * 2);
+      ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x - 4, y + 5); ctx.lineTo(x, y + 2); ctx.lineTo(x + 4, y + 5); ctx.closePath();
+      ctx.fillStyle = '#555'; ctx.fill();
+      ctx.font = 'bold 8px Sora,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillStyle = '#333'; ctx.fillText('N', x, y + 20);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SIDEBAR PANELS
+    // ═══════════════════════════════════════════════════════════════════
+    function buildSKUPanel() {
+      const c = document.getElementById('sku-list'); if (!c) return;
+      c.innerHTML = SKUS.map(s => `
+    <div class="sku-card">
+      <div class="sku-code">${s.code}</div>
+      <div class="sku-name">${s.name}</div>
+      <div class="sku-dims">W:${s.w} D:${s.d} H:${s.h}</div>
+      <div class="sku-price">₹${s.price.toLocaleString()}</div>
+    </div>`).join('');
+    }
+
+    function buildBOM() {
+      const c = document.getElementById('bom-list'); if (!c) return;
+      const counts = {};
+      rooms.forEach(room => {
+        const items = placeFurniture(room, 0.08);
+        items.forEach(item => {
+          const code = FURN_SKU[item.type];
+          if (code) counts[code] = (counts[code] || 0) + 1;
+        });
+      });
+      let html = '', total = 0;
+      Object.entries(counts).forEach(([code, qty]) => {
+        const sku = SKUS.find(s => s.code === code); if (!sku) return;
+        const cost = qty * sku.price; total += cost;
+        html += `<div class="bom-row"><span>${qty}× ${sku.code}<br><span style="font-size:10px;color:#888">${sku.name}</span></span><span class="mono">₹${cost.toLocaleString()}</span></div>`;
+      });
+      if (!html) { c.innerHTML = '<div style="color:#888;font-size:11px">Render the plan to see BOM.</div>'; return; }
+      html += `<div class="bom-total"><span>TOTAL ESTIMATE</span><span class="mono" style="color:var(--g)">₹${total.toLocaleString()}</span></div>`;
+      c.innerHTML = html;
+    }
+
+    // ── Import SKUs from catalogue image ─────────────────────────────────
+    function importSKUsFromImage(inp) {
+      const file = inp.files[0]; if (!file) return;
+      const status = document.getElementById('sku-import-status');
+      status.textContent = '⏳ Extracting SKUs from image…';
+      const reader = new FileReader();
+      reader.onload = async e => {
+        const dataUrl = e.target.result;
+        const b64 = dataUrl.split(',')[1];
+        const mime = file.type || 'image/jpeg';
+        try {
+          const resp = await fetch('/api/extract-skus', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_b64: b64, mime_type: mime })
+          });
+          const data = await resp.json();
+          if (data.error) { status.textContent = '❌ ' + data.error; return; }
+          // Map extracted rows into SKUS format
+          const newSkus = data.map(row => ({
+            code: (row.sku || row.description || 'UNKNOWN').toUpperCase().replace(/\s+/g, '-').substring(0, 30),
+            name: row.description || row.sku || 'Unknown',
+            cat: guessFurnCat(row.description || ''),
+            room: guessFurnRoom(row.description || ''),
+            w: row.width_mm || 1000,
+            h: row.height_mm || 500,
+            d: row.depth_mm || 500,
+            price: row.net_price_rs || 0
+          }));
+          // Merge into SKUS (add new, don't duplicate)
+          newSkus.forEach(ns => {
+            if (!SKUS.find(s => s.code === ns.code)) SKUS.push(ns);
+          });
+          status.textContent = `✅ ${newSkus.length} SKUs imported (${SKUS.length} total)`;
+          buildSKUPanel(); buildBOM();
+          inp.value = '';
+        } catch (err) {
+          status.textContent = '❌ Network error: ' + err.message;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function guessFurnCat(desc) {
+      desc = desc.toLowerCase();
+      if (desc.includes('sofa') || desc.includes('seater')) return 'sofa';
+      if (desc.includes('chair') && desc.includes('lounge')) return 'chair';
+      if (desc.includes('chair') && desc.includes('dining')) return 'dchair';
+      if (desc.includes('chair')) return 'chair';
+      if (desc.includes('bed') && desc.includes('side')) return 'bside';
+      if (desc.includes('bed')) return 'bed';
+      if (desc.includes('wardrobe') || desc.includes('cabinet')) return 'wardrobe';
+      if (desc.includes('table') && desc.includes('din')) return 'dtable';
+      if (desc.includes('table') && desc.includes('coffee')) return 'ctable';
+      if (desc.includes('table') && desc.includes('side')) return 'stable';
+      if (desc.includes('table')) return 'ctable';
+      if (desc.includes('vanity') || desc.includes('basin')) return 'vanity';
+      if (desc.includes('kitchen') || desc.includes('cabinet')) return 'kitupper';
+      return 'misc';
+    }
+
+    function guessFurnRoom(desc) {
+      desc = desc.toLowerCase();
+      if (desc.includes('sofa') || desc.includes('lounge')) return 'living';
+      if (desc.includes('bed') || desc.includes('wardrobe')) return 'bedroom';
+      if (desc.includes('dining') || desc.includes('table')) return 'dining';
+      if (desc.includes('kitchen') || desc.includes('pantry')) return 'kitchen';
+      if (desc.includes('bath') || desc.includes('vanity')) return 'bathroom';
+      return 'living';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // VIEW CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+    function setView(v) {
+      viewColor = v === 'color';
+      document.getElementById('b-color').classList.toggle('on', viewColor);
+      document.getElementById('b-bw').classList.toggle('on', !viewColor);
+      renderCanvas();
+    }
+    function toggleDims() { showDims = !showDims; document.getElementById('b-dims').classList.toggle('on', showDims); renderCanvas(); }
+    function toggleFurn() { showFurn = !showFurn; document.getElementById('b-furn').classList.toggle('on', showFurn); renderCanvas(); }
+    function toggleArea() { showArea = !showArea; document.getElementById('b-area').classList.toggle('on', showArea); renderCanvas(); }
+    function zoomIn() { zoom = Math.min(zoom + 0.15, 3); renderCanvas(); }
+    function zoomOut() { zoom = Math.max(zoom - 0.15, 0.3); renderCanvas(); }
+    function zoomFit() { zoom = 1.0; renderCanvas(); }
+
+    function exportPNG() {
+      const a = document.createElement('a');
+      a.download = `${document.getElementById('proj-name').value || 'floorplan'}.png`;
+      a.href = document.getElementById('plan-canvas').toDataURL(); a.click();
+    }
+    function exportPDF() { window.print(); }
+
+    function sbTab(t, el) {
+      ['upload', 'rooms', 'skus', 'bom'].forEach(id => {
+        document.getElementById('tab-' + id).style.display = id === t ? 'flex' : 'none';
+        const btn = document.getElementById('tab-btn-' + id);
+        if (btn) btn.classList.toggle('on', id === t);
+      });
+    }
+
+    function goStep(n) {
+      [1, 2, 3].forEach(i => {
+        const el = document.getElementById('s' + i);
+        el.classList.remove('on', 'done');
+        if (i < n) el.classList.add('done');
+        else if (i === n) el.classList.add('on');
+      });
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────
+    (function () {
+      const canvas = document.getElementById('plan-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#f5f2ec'; ctx.fillRect(0, 0, 1200, 900);
+      ctx.fillStyle = '#aaa'; ctx.font = '14px Sora,sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Upload a floor plan or click "Demo plan" to get started', 600, 450);
+      buildSKUPanel();
+      initCanvasInteraction(); // enable drag/click/rotate on furniture
+    })();
+  </script>
+</body>
+
+</html>
